@@ -20,7 +20,7 @@ case "$1 $2" in
   # a pane in $STUB_REUSED is alive but runs another terminal
   term=term_ordo
   grep -qx "$3" "$STUB_REUSED" 2>/dev/null && term=term_other
-  printf '{"result":{"pane":{"pane_id":"%s","terminal_id":"%s"}}}' "$3" "$term" ;;
+  printf '{"result":{"pane":{"pane_id":"%s","terminal_id":"%s","tab_id":"w1:t7"}}}' "$3" "$term" ;;
 "plugin pane") [ "$3" = open ] && printf '{"result":{"plugin_pane":{"pane":{"pane_id":"w1:p9"}}}}' ;;
 esac
 exit 0
@@ -32,7 +32,10 @@ agent() { printf '{"pane_id":"%s","workspace_id":"%s","tab_id":"%s"}' "$1" "$2" 
 
 run() {
   : >"$tmp/log"
-  env HERDR_BIN_PATH="$tmp/herdr" HERDR_PLUGIN_ROOT="$here" \
+  # nothing from a herdr this may itself be running inside
+  env -u HERDR_PANE_ID -u HERDR_TAB_ID -u HERDR_WORKSPACE_ID -u HERDR_PLUGIN_CONTEXT_JSON \
+    -u HERDR_PLUGIN_EVENT_JSON -u ORDO_ORIGIN_PANE -u HERDR_SOCKET_PATH \
+    HERDR_BIN_PATH="$tmp/herdr" HERDR_PLUGIN_ROOT="$here" \
     HERDR_PLUGIN_CONFIG_DIR="$tmp/config" HERDR_PLUGIN_STATE_DIR="$tmp/state" \
     STUB_LOG="$tmp/log" STUB_AGENTS="$tmp/agents.json" STUB_GONE="$tmp/gone" STUB_REUSED="$tmp/reused" "$@"
 }
@@ -62,6 +65,9 @@ printf 'x' | run HERDR_WORKSPACE_ID=w1 HERDR_TAB_ID=w1:t1 "$here/bin/send" >/dev
 check "send: two agents in one tab is refused, naming them" \
   '! grep -q send-text "$tmp/log" && grep -q "w1:p1, w1:p2" "$tmp/err"'
 
+printf 'x' | run HERDR_WORKSPACE_ID=w1 HERDR_TAB_ID=w1:t9 ORDO_ORIGIN_PANE=w1:p2 "$here/bin/send" >/dev/null 2>"$tmp/err"
+check "send: the agent the review was opened from" 'grep -q "send-text w1:p2" "$tmp/log"'
+
 mkdir -p "$tmp/config" && printf 'AGENT_PANE=w9:p3\n' >"$tmp/config/config.env"
 printf 'x' | run HERDR_WORKSPACE_ID=w1 "$here/bin/send" >/dev/null 2>"$tmp/err"
 check "send: AGENT_PANE wins" 'grep -q "send-text w9:p3" "$tmp/log"'
@@ -78,9 +84,18 @@ check "send: a long review goes in pieces" '[ "$(grep -c send-text "$tmp/log")" 
 # ---- review
 repo="$tmp/repo" && git init -q "$repo"
 ctx="{\"focused_pane_cwd\":\"$repo\"}"
+run HERDR_WORKSPACE_ID=w9 HERDR_PLUGIN_CONTEXT_JSON="$ctx" "$here/bin/review" open >/dev/null 2>"$tmp/err"
+check "review: by default a tab of its own, named ordo" \
+  'grep -q "plugin pane open --plugin foamscience.ordo --entrypoint pane --placement tab --workspace w9 --cwd $repo --focus" "$tmp/log" && grep -qx "tab rename w1:t7 ordo" "$tmp/log"'
+rm -f "$tmp/state/w9.pane"
+run HERDR_WORKSPACE_ID=w9 HERDR_PANE_ID=w9:p1 HERDR_PLUGIN_CONTEXT_JSON="$ctx" "$here/bin/review" open >/dev/null 2>"$tmp/err"
+check "review: the pane it was opened from rides along for :send" 'grep -q -- "--env ORDO_ORIGIN_PANE=w9:p1" "$tmp/log"'
+
+printf 'PLACEMENT=split\n' >"$tmp/config/config.env"
 run HERDR_WORKSPACE_ID=w1 HERDR_PANE_ID=w1:p1 HERDR_PLUGIN_CONTEXT_JSON="$ctx" "$here/bin/review" toggle >/dev/null 2>"$tmp/err"
-check "review: toggle opens a split beside the focused pane, on its repo" \
-  'grep -q "plugin pane open --plugin foamscience.ordo --entrypoint pane --placement split --target-pane w1:p1 --direction right --cwd $repo --focus" "$tmp/log" && [ "$(cat "$tmp/state/w1.pane")" = "w1:p9 term_ordo" ]'
+check "review: PLACEMENT=split opens beside the focused pane, leaving its tab's name" \
+  'grep -q "plugin pane open --plugin foamscience.ordo --entrypoint pane --placement split --target-pane w1:p1 --direction right --env ORDO_ORIGIN_PANE=w1:p1 --cwd $repo --focus" "$tmp/log" && ! grep -q "tab rename" "$tmp/log" && [ "$(cat "$tmp/state/w1.pane")" = "w1:p9 term_ordo" ]'
+rm "$tmp/config/config.env"
 
 run HERDR_WORKSPACE_ID=w1 HERDR_PLUGIN_CONTEXT_JSON="$ctx" "$here/bin/review" toggle >/dev/null 2>"$tmp/err"
 check "review: toggle again closes it" 'grep -qx "pane close w1:p9" "$tmp/log" && [ ! -f "$tmp/state/w1.pane" ]'
@@ -97,7 +112,11 @@ rm -f "$tmp/reused"
 
 ev="{\"data\":{\"workspace\":{\"workspace_id\":\"w5\",\"worktree\":{\"checkout_path\":\"$repo\"}}}}"
 run HERDR_PLUGIN_EVENT_JSON="$ev" "$here/bin/review" auto-open >/dev/null 2>"$tmp/err"
-check "review: a new worktree gets a pane, without taking focus" \
+check "review: by default a new worktree gets nothing" '[ ! -s "$tmp/log" ]'
+
+printf 'AUTO_OPEN=1\n' >"$tmp/config/config.env"
+run HERDR_PLUGIN_EVENT_JSON="$ev" "$here/bin/review" auto-open >/dev/null 2>"$tmp/err"
+check "review: with AUTO_OPEN=1 a new worktree gets a tab, without taking focus" \
   'grep -q "plugin pane open.*--cwd $repo --no-focus" "$tmp/log" && [ -f "$tmp/state/w5.pane" ]'
 
 rm -f "$tmp/state/w5.pane"
@@ -105,9 +124,6 @@ ev_open="{\"data\":{\"already_open\":true,\"workspace\":{\"workspace_id\":\"w5\"
 run HERDR_PLUGIN_EVENT_JSON="$ev_open" "$here/bin/review" auto-open >/dev/null 2>"$tmp/err"
 check "review: reopening an open workspace opens nothing" '[ ! -s "$tmp/log" ]'
 
-printf 'AUTO_OPEN=0\n' >"$tmp/config/config.env"
-run HERDR_PLUGIN_EVENT_JSON="$ev" "$here/bin/review" auto-open >/dev/null 2>"$tmp/err"
-check "review: AUTO_OPEN=0 keeps it closed" '[ ! -s "$tmp/log" ]'
 rm "$tmp/config/config.env"
 
 rm -f "$tmp/state/w1.pane"

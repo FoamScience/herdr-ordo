@@ -2,8 +2,9 @@
 # ordo's `:send` target: the review arrives on stdin and goes to the
 # workspace's agent as typed input, without Enter, and the agent is focused so
 # the reviewer reads it over and submits. Which agent: AGENT_PANE when set, the
-# only agent in the workspace, or the only one in ordo's own tab. Anything else
-# is refused with one line on stderr, which ordo shows.
+# agent the review pane was opened from, the only agent in the workspace, or
+# the only one in ordo's own tab. Anything else is refused with one line on
+# stderr, which ordo shows.
 set -u
 root="${HERDR_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 . "$root/bin/config"
@@ -25,7 +26,11 @@ if [ -z "$agent" ]; then
     '[.result.agents[] | select(.workspace_id == $ws)]' 2>/dev/null) ||
     fail "herdr agent list is unreadable"
   n=$(printf '%s' "$here" | jq 'length')
-  if [ "$n" -eq 1 ]; then
+  origin=$(printf '%s' "$here" | jq -r --arg p "${ORDO_ORIGIN_PANE:-}" \
+    'first(.[] | select(.pane_id == $p) | .pane_id) // empty')
+  if [ -n "$origin" ]; then
+    agent="$origin"
+  elif [ "$n" -eq 1 ]; then
     agent=$(printf '%s' "$here" | jq -r '.[0].pane_id')
   elif [ "$n" -eq 0 ]; then
     fail "no agent in this workspace to send to"

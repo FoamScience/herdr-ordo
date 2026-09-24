@@ -1,13 +1,16 @@
 # herdr-ordo
 
 A [herdr](https://herdr.dev) plugin that opens [ordo](https://github.com/FoamScience/ordo)
-in a pane beside your agent. You read the agent's diff in ordo's reading order,
-note and comment on it, and `:send` the review back to the agent as typed input.
+in a tab of its own, named `ordo`, next to your agent's. You read the agent's
+diff in ordo's reading order, note and comment on it, and `:send` the review
+back to the agent as typed input.
 
-- **Review pane**: ordo on the pane's repository, split beside the chat.
+- **Review tab**: ordo on the repository you opened it from, with the whole
+  screen to itself (or split beside the chat, with `PLACEMENT=split`).
 - **Send to the agent**: ordo's `:send` types the review into the workspace's
   agent without pressing Enter, and focuses it, so you read it over and submit.
-- **Auto-open**: a new worktree workspace gets a review pane.
+- **Auto-open**, opt in with `AUTO_OPEN=1`: a new worktree workspace gets a
+  review tab, without taking focus from the agent.
 
 The plugin runs ordo and herdr's own CLI. It never edits the worktree.
 
@@ -33,10 +36,15 @@ Bind the toggle to a key in herdr's `config.toml`:
 key = "prefix+o"
 type = "plugin_action"
 command = "foamscience.ordo.toggle"
-description = "ordo review pane"
+description = "ordo review tab"
 ```
 
-## In the pane
+The toggle opens the `ordo` tab, focused, or closes it when it is open. From
+the tab, herdr's own tab keys take you back to the agent and in again; `open`
+brings an open review tab to the front instead of opening a second one. Close
+it by hand and the next toggle opens a fresh one.
+
+## In the tab
 
 It is ordo, so everything ordo does applies. For the review loop:
 
@@ -51,8 +59,9 @@ It is ordo, so everything ordo does applies. For the review loop:
 
 Which agent receives it:
 - `AGENT_PANE`, when set.
+- Otherwise the agent you opened the review from.
 - Otherwise the only agent in the workspace.
-- Otherwise the only agent in the review pane's own tab.
+- Otherwise the only agent in the review's own tab (with `PLACEMENT=split`, the chat's).
 
 With several candidates and no way to tell them apart, `:send` refuses and
 names them.
@@ -66,8 +75,8 @@ of `KEY=value` lines. Quote any value with spaces.
 | --- | --- | --- |
 | `ORDO_BIN` | `ordo` | the ordo binary |
 | `ORDO_ARGS` | `zz` | what to review: `zz` is the uncommitted work; `"main...zz"` is everything since the branch left `main`, uncommitted included |
-| `AUTO_OPEN` | `1` | `0` keeps new worktree workspaces without a pane |
-| `PLACEMENT` | `split` | `split`, `zoomed`, `tab` or `overlay` |
+| `AUTO_OPEN` | `0` | `1` opens a review tab in every new worktree workspace |
+| `PLACEMENT` | `tab` | `tab` (its own tab, named `ordo`), `split`, `zoomed` or `overlay` |
 | `DIRECTION` | `right` | `right` or `down`, for a split |
 | `AGENT_PANE` | | always send to this pane id |
 

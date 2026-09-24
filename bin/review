@@ -75,11 +75,20 @@ open() {
   overlay) set -- --placement overlay ;;
   *) refuse "PLACEMENT must be split, zoomed, tab or overlay, not '$PLACEMENT'" ;;
   esac
+  # the pane this was opened from: when it is an agent, it is the one the
+  # review goes back to (see bin/send)
+  [ -n "${HERDR_PANE_ID:-}" ] && set -- "$@" --env "ORDO_ORIGIN_PANE=$HERDR_PANE_ID"
   out=$("$H" plugin pane open --plugin "${HERDR_PLUGIN_ID:-foamscience.ordo}" --entrypoint pane \
     "$@" --cwd "$cwd" "$focus" 2>/dev/null)
   id=$(printf '%s' "$out" | jq -r '.result.plugin_pane.pane.pane_id // empty' 2>/dev/null)
   [ -n "$id" ] || refuse "herdr could not open the review pane"
   mkdir -p "$state_dir" && printf '%s %s\n' "$id" "$(terminal_of "$id")" >"$state"
+  # herdr numbers a new tab; this one says what it is. A failed rename
+  # leaves a working pane, so it does not fail the open
+  if [ "$PLACEMENT" = tab ]; then
+    tab=$("$H" pane get "$id" 2>/dev/null | jq -r '.result.pane.tab_id // empty' 2>/dev/null)
+    [ -z "$tab" ] || "$H" tab rename "$tab" ordo >/dev/null 2>&1 || :
+  fi
   [ "$mode" = auto-open ] || printf 'opened %s in %s\n' "$id" "$ws"
 }
 

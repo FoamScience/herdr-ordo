@@ -11,7 +11,7 @@ description = "Review an agent's diff in reading order with ordo, beside the cha
 [[panes]]
 id = "pane"
 title = "ordo"
-placement = "split"
+placement = "tab"
 command = ["sh", "-c", "exec \"$HERDR_PLUGIN_ROOT/bin/pane\""]
 
 [[actions]]
@@ -32,7 +32,7 @@ title = "ordo: close review pane"
 contexts = ["pane", "workspace"]
 command = ["bash", "bin/review", "close"]
 
-# a worktree workspace gets a review pane when it is born, unless AUTO_OPEN=0
+# with AUTO_OPEN=1, a worktree workspace gets a review tab when it is born
 [[events]]
 on = "worktree.created"
 command = ["bash", "bin/review", "auto-open"]

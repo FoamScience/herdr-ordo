@@ -12,8 +12,10 @@ ORDO_BIN=ordo
 # what the pane reviews: `zz` is the uncommitted work, `main...zz` everything
 # since the branch left main, uncommitted included
 ORDO_ARGS=zz
-AUTO_OPEN=1
-PLACEMENT=split
+# opt in: a new worktree workspace gets a review tab only with AUTO_OPEN=1
+AUTO_OPEN=0
+# a tab of its own, named `ordo`: the review wants the screen
+PLACEMENT=tab
 DIRECTION=right
 # a pane id to always send to, when a workspace runs more than one agent
 AGENT_PANE=
