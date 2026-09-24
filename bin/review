@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# The pane actions and the worktree event hook.
+#
+#   review toggle      open the workspace's review pane, or close it if open
+#   review open        open it; focus it if it is already open
+#   review close       close it
+#   review auto-open   worktree hook: open it for a new worktree workspace
+#
+# The open pane's id and terminal id are kept per workspace in
+# $HERDR_PLUGIN_STATE_DIR. A pane counts as open only while herdr reports that
+# id with that same terminal: after a restart the id can name another pane,
+# and closing it would close someone else's work.
+set -u
+root="${HERDR_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+. "$root/bin/config"
+
+mode="${1:-toggle}"
+refuse() {
+  [ "$mode" = auto-open ] && exit 0
+  printf 'ordo: %s\n' "$1" >&2
+  exit 1
+}
+
+ws="${HERDR_WORKSPACE_ID:-}"
+pane="${HERDR_PANE_ID:-}"
+cwd=$(printf '%s' "${HERDR_PLUGIN_CONTEXT_JSON:-{\}}" |
+  jq -r '.focused_pane_cwd // .workspace_cwd // empty' 2>/dev/null)
+
+if [ "$mode" = auto-open ]; then
+  [ "$AUTO_OPEN" = 1 ] || exit 0
+  ev="${HERDR_PLUGIN_EVENT_JSON:-{\}}"
+  # `worktree.opened` also fires for a workspace already open: a focus, not a
+  # birth, and a pane the reviewer closed there stays closed
+  printf '%s' "$ev" | jq -e '.data.already_open == true' >/dev/null 2>&1 && exit 0
+  ws=$(printf '%s' "$ev" | jq -r '.data.workspace.workspace_id // .data.worktree.open_workspace_id // empty')
+  cwd=$(printf '%s' "$ev" | jq -r '.data.workspace.worktree.checkout_path // .data.worktree.path // empty')
+  pane=""
+fi
+[ -n "$ws" ] || refuse "no workspace (invoke from inside herdr)"
+
+state_dir="${HERDR_PLUGIN_STATE_DIR:-$HOME/.local/state/herdr-ordo}"
+state="$state_dir/$ws.pane"
+terminal_of() {
+  "$H" pane get "$1" 2>/dev/null | jq -r '.result.pane.terminal_id // empty' 2>/dev/null
+}
+open_pane() {
+  [ -f "$state" ] || return 1
+  read -r id term <"$state"
+  [ -n "${id:-}" ] && [ -n "${term:-}" ] && [ "$(terminal_of "$id")" = "$term" ] && printf '%s' "$id"
+}
+
+close() {
+  if id=$(open_pane); then
+    "$H" pane close "$id" >/dev/null 2>&1 || refuse "herdr could not close $id"
+    printf 'closed %s\n' "$id"
+  fi
+  rm -f "$state"
+}
+
+open() {
+  git -C "$cwd" rev-parse --show-toplevel >/dev/null 2>&1 ||
+    refuse "not a git repository: '${cwd:-<no directory>}'"
+  focus=--focus
+  [ "$mode" = auto-open ] && focus=--no-focus
+  case "$PLACEMENT" in
+  split | zoomed)
+    if [ -z "$pane" ]; then
+      pane=$("$H" pane list --workspace "$ws" 2>/dev/null | jq -r '.result.panes[0].pane_id // empty')
+    fi
+    [ -n "$pane" ] || refuse "no pane to split in $ws"
+    set -- --placement "$PLACEMENT" --target-pane "$pane"
+    [ "$PLACEMENT" = split ] && set -- "$@" --direction "$DIRECTION"
+    ;;
+  tab) set -- --placement tab --workspace "$ws" ;;
+  overlay) set -- --placement overlay ;;
+  *) refuse "PLACEMENT must be split, zoomed, tab or overlay, not '$PLACEMENT'" ;;
+  esac
+  out=$("$H" plugin pane open --plugin "${HERDR_PLUGIN_ID:-foamscience.ordo}" --entrypoint pane \
+    "$@" --cwd "$cwd" "$focus" 2>/dev/null)
+  id=$(printf '%s' "$out" | jq -r '.result.plugin_pane.pane.pane_id // empty' 2>/dev/null)
+  [ -n "$id" ] || refuse "herdr could not open the review pane"
+  mkdir -p "$state_dir" && printf '%s %s\n' "$id" "$(terminal_of "$id")" >"$state"
+  [ "$mode" = auto-open ] || printf 'opened %s in %s\n' "$id" "$ws"
+}
+
+case "$mode" in
+close) close ;;
+toggle) if open_pane >/dev/null; then close; else open; fi ;;
+open)
+  if id=$(open_pane); then
+    "$H" plugin pane focus "$id" >/dev/null 2>&1 || :
+    printf 'already open: %s\n' "$id"
+  else
+    open
+  fi
+  ;;
+auto-open) open_pane >/dev/null || open ;;
+*) refuse "unknown mode '$mode' (toggle | open | close | auto-open)" ;;
+esac

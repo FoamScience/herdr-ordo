@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# The review pane: ordo on the pane's repository, with `:send` wired to the
+# workspace's agent through bin/send.
+set -u
+root="${HERDR_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+. "$root/bin/config"
+
+if ! command -v "$ORDO_BIN" >/dev/null 2>&1; then
+  printf 'ordo: `%s` not found — install ordo (cargo install --path <ordo checkout>) or set ORDO_BIN in %s/config.env\n' \
+    "$ORDO_BIN" "${HERDR_PLUGIN_CONFIG_DIR:-<plugin config dir>}"
+  printf 'press Enter to close\n'
+  read -r _
+  exit 1
+fi
+
+# ordo runs it through `sh -c`: quoted for the shell, whatever the path holds
+ORDO_SEND=$(printf '%q' "$root/bin/send")
+export ORDO_SEND
+# ORDO_ARGS is a word list on purpose: `main...zz`, or several flags
+# shellcheck disable=SC2086
+exec "$ORDO_BIN" $ORDO_ARGS

@@ -1,0 +1,26 @@
+# Sourced by every entry point: the defaults, then the user's
+# $HERDR_PLUGIN_CONFIG_DIR/config.env over them (plain KEY=value lines).
+
+# the review is cut into pieces by character, which needs a UTF-8 locale;
+# herdr may start plugins with none
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+
+# herdr runs plugin commands with a minimal PATH
+export PATH="$HOME/.cargo/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
+ORDO_BIN=ordo
+# what the pane reviews: `zz` is the uncommitted work, `main...zz` everything
+# since the branch left main, uncommitted included
+ORDO_ARGS=zz
+AUTO_OPEN=1
+PLACEMENT=split
+DIRECTION=right
+# a pane id to always send to, when a workspace runs more than one agent
+AGENT_PANE=
+
+if [ -n "${HERDR_PLUGIN_CONFIG_DIR:-}" ] && [ -f "$HERDR_PLUGIN_CONFIG_DIR/config.env" ]; then
+  # shellcheck disable=SC1091
+  . "$HERDR_PLUGIN_CONFIG_DIR/config.env"
+fi
+
+H="${HERDR_BIN_PATH:-herdr}"

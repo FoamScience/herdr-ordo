@@ -1,0 +1,42 @@
+id = "foamscience.ordo"
+name = "ordo"
+version = "0.1.0"
+# `agent list` carries `cwd` and `pane send-text` is the stable way in from 0.7.5
+min_herdr_version = "0.7.5"
+platforms = ["linux", "macos"]
+description = "Review an agent's diff in reading order with ordo, beside the chat, and send the review back to the agent."
+
+# ordo itself is not built here: it is a separate install (see README). The
+# pane runs whatever `ORDO_BIN` names, `ordo` on PATH by default.
+[[panes]]
+id = "pane"
+title = "ordo"
+placement = "split"
+command = ["sh", "-c", "exec \"$HERDR_PLUGIN_ROOT/bin/pane\""]
+
+[[actions]]
+id = "toggle"
+title = "ordo: toggle review pane"
+contexts = ["pane", "workspace"]
+command = ["bash", "bin/review", "toggle"]
+
+[[actions]]
+id = "open"
+title = "ordo: open review pane"
+contexts = ["pane", "workspace"]
+command = ["bash", "bin/review", "open"]
+
+[[actions]]
+id = "close"
+title = "ordo: close review pane"
+contexts = ["pane", "workspace"]
+command = ["bash", "bin/review", "close"]
+
+# a worktree workspace gets a review pane when it is born, unless AUTO_OPEN=0
+[[events]]
+on = "worktree.created"
+command = ["bash", "bin/review", "auto-open"]
+
+[[events]]
+on = "worktree.opened"
+command = ["bash", "bin/review", "auto-open"]

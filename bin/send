@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# ordo's `:send` target: the review arrives on stdin and goes to the
+# workspace's agent as typed input, without Enter, and the agent is focused so
+# the reviewer reads it over and submits. Which agent: AGENT_PANE when set, the
+# only agent in the workspace, or the only one in ordo's own tab. Anything else
+# is refused with one line on stderr, which ordo shows.
+set -u
+root="${HERDR_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+. "$root/bin/config"
+
+fail() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
+text=$(cat)
+[ -n "$text" ] || fail "nothing to send"
+
+agent="$AGENT_PANE"
+if [ -z "$agent" ]; then
+  ws="${HERDR_WORKSPACE_ID:-}"
+  [ -n "$ws" ] || fail "not inside a herdr workspace"
+  agents=$("$H" agent list 2>/dev/null) || fail "herdr agent list failed"
+  here=$(printf '%s' "$agents" | jq -r --arg ws "$ws" \
+    '[.result.agents[] | select(.workspace_id == $ws)]' 2>/dev/null) ||
+    fail "herdr agent list is unreadable"
+  n=$(printf '%s' "$here" | jq 'length')
+  if [ "$n" -eq 1 ]; then
+    agent=$(printf '%s' "$here" | jq -r '.[0].pane_id')
+  elif [ "$n" -eq 0 ]; then
+    fail "no agent in this workspace to send to"
+  else
+    tab=$(printf '%s' "$here" | jq -r --arg t "${HERDR_TAB_ID:-}" \
+      '[.[] | select(.tab_id == $t)] | if length == 1 then .[0].pane_id else empty end')
+    [ -n "$tab" ] || fail "$n agents in this workspace: set AGENT_PANE to one of $(printf '%s' "$here" | jq -r '[.[].pane_id] | join(", ")')"
+    agent="$tab"
+  fi
+fi
+
+# one argument per call, well under the kernel's per-argument limit
+chunk=32768
+while [ -n "$text" ]; do
+  "$H" pane send-text "$agent" "${text:0:$chunk}" >/dev/null 2>&1 ||
+    fail "herdr could not type into $agent"
+  text="${text:$chunk}"
+done
+"$H" agent focus "$agent" >/dev/null 2>&1 || :
+printf 'sent to %s\n' "$agent"
