@@ -14,7 +14,9 @@ back to the agent as typed input.
   reloads by itself when you pause).
 - **Waves**, opt in with `WAVES=1`: each agent turn is recorded as a wave
   (`ordo wave`), so `:e wave/2..wave/3` reviews one turn and
-  `:e wave/0..wave/last` everything since the review opened.
+  `:e wave/0..wave/last` everything since the review opened;
+  `ORDO_ARGS=wave/0..wave/last` opens on that, and with `WATCH` on each new
+  wave is announced (`gw`/`gW` step through them).
 - **Auto-open**, opt in with `AUTO_OPEN=1`: a new worktree workspace gets a
   review tab, without taking focus from the agent.
 

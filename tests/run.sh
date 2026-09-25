@@ -91,13 +91,17 @@ printf '#!/bin/sh\necho "$@"\n' >"$tmp/fake-ordo" && chmod +x "$tmp/fake-ordo"
 mkdir -p "$tmp/config" && printf 'ORDO_BIN=%s\n' "$tmp/fake-ordo" >"$tmp/config/config.env"
 run "$here/bin/pane" >"$tmp/log" 2>"$tmp/err"
 check "pane: ordo watches the uncommitted work by default" 'grep -qx -- "--watch=hint zz" "$tmp/log"'
+printf '#!/bin/sh\necho "$@" >>"%s"\n' "$tmp/pane-calls" >"$tmp/logging-ordo" && chmod +x "$tmp/logging-ordo"
+printf 'ORDO_BIN=%s\nWAVES=1\n' "$tmp/logging-ordo" >"$tmp/config/config.env"
+run "$here/bin/pane" >/dev/null 2>&1
+check "pane: WAVES=1 records the first wave before the review opens" '[ "$(head -2 "$tmp/pane-calls" | tr "\n" " ")" = "wave --watch=hint zz " ]'
 rm "$tmp/config/config.env"
 
 # ---- waves
 printf '#!/bin/sh\necho "$@" >>"%s"\n' "$tmp/ordo-calls" >"$tmp/fake-ordo"
 printf 'ORDO_BIN=%s\nAGENT_PANE=w1:p1\n' "$tmp/fake-ordo" >"$tmp/config/config.env"
 run "$here/bin/waves" >/dev/null 2>&1
-check "waves: one at the start and one per finished agent turn" '[ "$(grep -c "^wave" "$tmp/ordo-calls")" = 3 ]'
+check "waves: one per finished agent turn" '[ "$(grep -c "^wave" "$tmp/ordo-calls")" = 2 ]'
 check "waves: a Claude agent's turn is recorded with its session" '[ "$(grep -cx "wave --claude sess-1" "$tmp/ordo-calls")" = 2 ]'
 check "waves: waits on the agent pane going working, then idle" 'grep -q "agent wait w1:p1 --until working" "$tmp/log" && grep -q "agent wait w1:p1 --until idle --until done" "$tmp/log"'
 rm "$tmp/ordo-calls"
