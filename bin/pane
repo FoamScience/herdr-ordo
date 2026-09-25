@@ -18,6 +18,7 @@ ORDO_SEND=$(printf '%q' "$root/bin/send")
 export ORDO_SEND
 waves=
 if [ "${WAVES:-0}" = 1 ]; then
+  "$ORDO_BIN" wave >/dev/null 2>&1
   "$root/bin/waves" &
   waves=$!
 fi
