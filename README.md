@@ -9,6 +9,9 @@ back to the agent as typed input.
   screen to itself (or split beside the chat, with `PLACEMENT=split`).
 - **Send to the agent**: ordo's `:send` types the review into the workspace's
   agent without pressing Enter, and focuses it, so you read it over and submit.
+- **Follows the agent**: the review marks itself stale as the agent keeps
+  editing, and `r` reads it again without losing your place (`WATCH=auto`
+  reloads by itself when you pause).
 - **Auto-open**, opt in with `AUTO_OPEN=1`: a new worktree workspace gets a
   review tab, without taking focus from the agent.
 
@@ -17,7 +20,8 @@ The plugin runs ordo and herdr's own CLI. It never edits the worktree.
 ## Requirements
 
 - herdr ≥ 0.7.5
-- `ordo` itself, installed separately, for example `cargo install --path <ordo checkout>`
+- `ordo` itself, recent enough to know `--watch`, installed separately, for
+  example `cargo install --path <ordo checkout>`
 - `git`, `jq`, `bash`
 
 ## Install
@@ -56,6 +60,8 @@ It is ordo, so everything ordo does applies. For the review loop:
 | `:send` | type the review into the agent, notes and comments, anchored `path:line` |
 | `:send all` | the same, with ordo's own findings added |
 | `:yank` | copy the review to the clipboard instead |
+| `r` | read the change again after the agent edited, keeping your place |
+| `:watch auto` | reload by itself from now on |
 
 Which agent receives it:
 - `AGENT_PANE`, when set.
@@ -75,6 +81,7 @@ of `KEY=value` lines. Quote any value with spaces.
 | --- | --- | --- |
 | `ORDO_BIN` | `ordo` | the ordo binary |
 | `ORDO_ARGS` | `zz` | what to review: `zz` is the uncommitted work; `"main...zz"` is everything since the branch left `main`, uncommitted included |
+| `WATCH` | `hint` | `hint`: mark the review stale when the agent edits, `r` reloads; `auto`: reload by itself when you pause; `off` |
 | `AUTO_OPEN` | `0` | `1` opens a review tab in every new worktree workspace |
 | `PLACEMENT` | `tab` | `tab` (its own tab, named `ordo`), `split`, `zoomed` or `overlay` |
 | `DIRECTION` | `right` | `right` or `down`, for a split |

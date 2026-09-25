@@ -18,4 +18,4 @@ ORDO_SEND=$(printf '%q' "$root/bin/send")
 export ORDO_SEND
 # ORDO_ARGS is a word list on purpose: `main...zz`, or several flags
 # shellcheck disable=SC2086
-exec "$ORDO_BIN" $ORDO_ARGS
+exec "$ORDO_BIN" --watch="${WATCH:-off}" $ORDO_ARGS

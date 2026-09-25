@@ -81,6 +81,13 @@ agents "$(agent w1:p1 w1 w1:t1)"
 head -c 70000 /dev/zero | tr '\0' 'a' | run HERDR_WORKSPACE_ID=w1 "$here/bin/send" >/dev/null 2>"$tmp/err"
 check "send: a long review goes in pieces" '[ "$(grep -c send-text "$tmp/log")" -eq 3 ]'
 
+# ---- pane
+printf '#!/bin/sh\necho "$@"\n' >"$tmp/fake-ordo" && chmod +x "$tmp/fake-ordo"
+mkdir -p "$tmp/config" && printf 'ORDO_BIN=%s\n' "$tmp/fake-ordo" >"$tmp/config/config.env"
+run "$here/bin/pane" >"$tmp/log" 2>"$tmp/err"
+check "pane: ordo watches the uncommitted work by default" 'grep -qx -- "--watch=hint zz" "$tmp/log"'
+rm "$tmp/config/config.env"
+
 # ---- review
 repo="$tmp/repo" && git init -q "$repo"
 ctx="{\"focused_pane_cwd\":\"$repo\"}"
