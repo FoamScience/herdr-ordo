@@ -87,7 +87,7 @@ of `KEY=value` lines. Quote any value with spaces.
 | `ORDO_BIN` | `ordo` | the ordo binary |
 | `ORDO_ARGS` | `zz` | what to review: `zz` is the uncommitted work; `"main...zz"` is everything since the branch left `main`, uncommitted included |
 | `WATCH` | `hint` | `hint`: mark the review stale when the agent edits, `r` reloads; `auto`: reload by itself when you pause; `off` |
-| `WAVES` | `0` | `1` records a wave when the review opens and each time the agent finishes a turn (goes from working to idle); needs an ordo that knows `ordo wave` |
+| `WAVES` | `0` | `1` records a wave when the review opens and each time the agent finishes a turn (goes from working to idle); for a Claude Code agent the wave also keeps what the turn was asked and answered. Needs an ordo that knows `ordo wave` |
 | `AUTO_OPEN` | `0` | `1` opens a review tab in every new worktree workspace |
 | `PLACEMENT` | `tab` | `tab` (its own tab, named `ordo`), `split`, `zoomed` or `overlay` |
 | `DIRECTION` | `right` | `right` or `down`, for a split |
