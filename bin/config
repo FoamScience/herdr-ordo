@@ -12,6 +12,9 @@ ORDO_BIN=ordo
 # what the pane reviews: `zz` is the uncommitted work, `main...zz` everything
 # since the branch left main, uncommitted included
 ORDO_ARGS=zz
+# the agent keeps editing while you read: `hint` marks the review stale and
+# `r` reloads it in place, `auto` reloads by itself when you pause, `off`
+WATCH=hint
 # opt in: a new worktree workspace gets a review tab only with AUTO_OPEN=1
 AUTO_OPEN=0
 # a tab of its own, named `ordo`: the review wants the screen
