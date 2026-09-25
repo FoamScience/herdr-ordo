@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Progressive review, opt in with WAVES=1: the working tree is recorded as a
+# wave (`ordo wave`) when the review opens, and again each time the agent
+# finishes a turn — herdr sees it go from working back to idle. `ordo
+# wave/2..wave/3` then reviews one turn. Runs beside the review pane and ends
+# with it, or when the agent's pane goes away.
+set -u
+root="${HERDR_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+. "$root/bin/config"
+
+agent="${AGENT_PANE:-${ORDO_ORIGIN_PANE:-}}"
+[ -n "$agent" ] || exit 0
+# a blocking `herdr agent wait` is a child of its own: take it down too
+trap 'kill $(jobs -p) 2>/dev/null; exit 0' TERM INT
+
+"$ORDO_BIN" wave >/dev/null 2>&1
+while :; do
+  "$H" agent wait "$agent" --until working >/dev/null 2>&1 &
+  wait $! || exit 0
+  "$H" agent wait "$agent" --until idle --until done >/dev/null 2>&1 &
+  wait $! || exit 0
+  "$ORDO_BIN" wave >/dev/null 2>&1
+done

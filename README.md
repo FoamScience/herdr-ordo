@@ -12,10 +12,15 @@ back to the agent as typed input.
 - **Follows the agent**: the review marks itself stale as the agent keeps
   editing, and `r` reads it again without losing your place (`WATCH=auto`
   reloads by itself when you pause).
+- **Waves**, opt in with `WAVES=1`: each agent turn is recorded as a wave
+  (`ordo wave`), so `:e wave/2..wave/3` reviews one turn and
+  `:e wave/0..wave/last` everything since the review opened.
 - **Auto-open**, opt in with `AUTO_OPEN=1`: a new worktree workspace gets a
   review tab, without taking focus from the agent.
 
-The plugin runs ordo and herdr's own CLI. It never edits the worktree.
+The plugin runs ordo and herdr's own CLI. It never edits the worktree; with
+`WAVES=1` it adds refs under `refs/worktree/ordo/waves/`, and `ordo wave --clear`
+removes them.
 
 ## Requirements
 
@@ -82,6 +87,7 @@ of `KEY=value` lines. Quote any value with spaces.
 | `ORDO_BIN` | `ordo` | the ordo binary |
 | `ORDO_ARGS` | `zz` | what to review: `zz` is the uncommitted work; `"main...zz"` is everything since the branch left `main`, uncommitted included |
 | `WATCH` | `hint` | `hint`: mark the review stale when the agent edits, `r` reloads; `auto`: reload by itself when you pause; `off` |
+| `WAVES` | `0` | `1` records a wave when the review opens and each time the agent finishes a turn (goes from working to idle); needs an ordo that knows `ordo wave` |
 | `AUTO_OPEN` | `0` | `1` opens a review tab in every new worktree workspace |
 | `PLACEMENT` | `tab` | `tab` (its own tab, named `ordo`), `split`, `zoomed` or `overlay` |
 | `DIRECTION` | `right` | `right` or `down`, for a split |

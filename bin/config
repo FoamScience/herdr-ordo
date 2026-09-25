@@ -15,6 +15,9 @@ ORDO_ARGS=zz
 # the agent keeps editing while you read: `hint` marks the review stale and
 # `r` reloads it in place, `auto` reloads by itself when you pause, `off`
 WATCH=hint
+# opt in: with WAVES=1 each agent turn is recorded as a wave (`ordo wave`),
+# so `:e wave/2..wave/3` reviews one turn and `:e wave/0..wave/last` them all
+WAVES=0
 # opt in: a new worktree workspace gets a review tab only with AUTO_OPEN=1
 AUTO_OPEN=0
 # a tab of its own, named `ordo`: the review wants the screen

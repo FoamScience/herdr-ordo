@@ -22,6 +22,10 @@ case "$1 $2" in
   grep -qx "$3" "$STUB_REUSED" 2>/dev/null && term=term_other
   printf '{"result":{"pane":{"pane_id":"%s","terminal_id":"%s","tab_id":"w1:t7"}}}' "$3" "$term" ;;
 "plugin pane") [ "$3" = open ] && printf '{"result":{"plugin_pane":{"pane":{"pane_id":"w1:p9"}}}}' ;;
+"agent wait")
+  # the agent turns over twice, then its pane is gone
+  n=$(grep -c '^agent wait' "$STUB_LOG")
+  [ "$n" -le 4 ] || exit 1 ;;
 esac
 exit 0
 EOF
@@ -86,6 +90,18 @@ printf '#!/bin/sh\necho "$@"\n' >"$tmp/fake-ordo" && chmod +x "$tmp/fake-ordo"
 mkdir -p "$tmp/config" && printf 'ORDO_BIN=%s\n' "$tmp/fake-ordo" >"$tmp/config/config.env"
 run "$here/bin/pane" >"$tmp/log" 2>"$tmp/err"
 check "pane: ordo watches the uncommitted work by default" 'grep -qx -- "--watch=hint zz" "$tmp/log"'
+rm "$tmp/config/config.env"
+
+# ---- waves
+printf '#!/bin/sh\necho "$@" >>"%s"\n' "$tmp/ordo-calls" >"$tmp/fake-ordo"
+printf 'ORDO_BIN=%s\nAGENT_PANE=w1:p1\n' "$tmp/fake-ordo" >"$tmp/config/config.env"
+run "$here/bin/waves" >/dev/null 2>&1
+check "waves: one at the start and one per finished agent turn" '[ "$(grep -cx wave "$tmp/ordo-calls")" = 3 ]'
+check "waves: waits on the agent pane going working, then idle" 'grep -q "agent wait w1:p1 --until working" "$tmp/log" && grep -q "agent wait w1:p1 --until idle --until done" "$tmp/log"'
+rm "$tmp/ordo-calls"
+printf 'ORDO_BIN=%s\n' "$tmp/fake-ordo" >"$tmp/config/config.env"
+run "$here/bin/waves" >/dev/null 2>&1
+check "waves: no agent to follow records nothing" '[ ! -e "$tmp/ordo-calls" ]'
 rm "$tmp/config/config.env"
 
 # ---- review

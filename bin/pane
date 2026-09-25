@@ -16,6 +16,14 @@ fi
 # ordo runs it through `sh -c`: quoted for the shell, whatever the path holds
 ORDO_SEND=$(printf '%q' "$root/bin/send")
 export ORDO_SEND
+waves=
+if [ "${WAVES:-0}" = 1 ]; then
+  "$root/bin/waves" &
+  waves=$!
+fi
 # ORDO_ARGS is a word list on purpose: `main...zz`, or several flags
 # shellcheck disable=SC2086
-exec "$ORDO_BIN" --watch="${WATCH:-off}" $ORDO_ARGS
+"$ORDO_BIN" --watch="${WATCH:-off}" $ORDO_ARGS
+rc=$?
+[ -z "$waves" ] || kill "$waves" 2>/dev/null
+exit "$rc"
