@@ -91,6 +91,10 @@ printf '#!/bin/sh\necho "$@"\n' >"$tmp/fake-ordo" && chmod +x "$tmp/fake-ordo"
 mkdir -p "$tmp/config" && printf 'ORDO_BIN=%s\n' "$tmp/fake-ordo" >"$tmp/config/config.env"
 run "$here/bin/pane" >"$tmp/log" 2>"$tmp/err"
 check "pane: ordo watches the uncommitted work by default" 'grep -qx -- "--watch=hint zz" "$tmp/log"'
+printf '#!/bin/sh\necho "ordo: nothing to review in zz" >&2\n' >"$tmp/empty-ordo" && chmod +x "$tmp/empty-ordo"
+printf 'ORDO_BIN=%s\n' "$tmp/empty-ordo" >"$tmp/config/config.env"
+run "$here/bin/pane" >"$tmp/log" 2>"$tmp/err" </dev/null
+check "pane: nothing to review holds the pane with ordo's message" 'grep -qx "ordo: nothing to review in zz" "$tmp/log" && grep -qx "press Enter to close" "$tmp/log"'
 printf '#!/bin/sh\necho "$@" >>"%s"\n' "$tmp/pane-calls" >"$tmp/logging-ordo" && chmod +x "$tmp/logging-ordo"
 printf 'ORDO_BIN=%s\nWAVES=1\n' "$tmp/logging-ordo" >"$tmp/config/config.env"
 run "$here/bin/pane" >/dev/null 2>&1
