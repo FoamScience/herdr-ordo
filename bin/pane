@@ -24,7 +24,16 @@ if [ "${WAVES:-0}" = 1 ]; then
 fi
 # ORDO_ARGS is a word list on purpose: `main...zz`, or several flags
 # shellcheck disable=SC2086
-"$ORDO_BIN" --watch="${WATCH:-off}" $ORDO_ARGS
+err=$(mktemp)
+"$ORDO_BIN" --watch="${WATCH:-off}" $ORDO_ARGS 2>"$err"
 rc=$?
 [ -z "$waves" ] || kill "$waves" 2>/dev/null
+# ordo leaves with a line on stderr when there is nothing to review or git
+# failed; the pane closes with this process, so hold it until that is read
+if [ -s "$err" ]; then
+  cat "$err"
+  printf 'press Enter to close\n'
+  read -r _
+fi
+rm -f "$err"
 exit "$rc"
